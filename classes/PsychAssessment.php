@@ -2,8 +2,25 @@
 class PsychAssessment extends Assessment {
     protected array $psychQuestions = [];
 
+    // Mapping final: trait -> track -> impact weight
+    private array $traitImpact = [
+        'detail' => [
+            'software' => 1,
+            'hardware' => 1,
+            'network' => 1
+        ],
+        'creative' => [
+            'multimedia' => 1,
+            'software' => 0.5
+        ],
+        'risk' => [
+            'hardware' => 1,
+            'network' => 1
+        ]
+    ];
+
     public function __construct() {
-        // populate both core questions and psych questions
+        // Core questions (minat)
         $this->questions = [
             ['q'=>'Saya menikmati menulis software dan memecahkan masalah algoritma.', 'key'=>'software'],
             ['q'=>'Saya suka merancang rangkaian dan bekerja dengan mikrokontroler.', 'key'=>'hardware'],
@@ -15,6 +32,7 @@ class PsychAssessment extends Assessment {
             ['q'=>'Saya suka mengedit video, suara, dan media interaktif.', 'key'=>'multimedia']
         ];
 
+        // Psychology questions
         $this->psychQuestions = [
             ['q'=>'Saya lebih suka tugas yang terstruktur dengan aturan yang jelas.', 'trait'=>'detail'],
             ['q'=>'Saya suka mencoba ide-ide baru yang berisiko.', 'trait'=>'risk'],
@@ -22,81 +40,108 @@ class PsychAssessment extends Assessment {
         ];
     }
 
-    public function getPsychQuestions(): array { return $this->psychQuestions; }
+    public function getPsychQuestions(): array {
+        return $this->psychQuestions;
+    }
+
     public function fullEvaluate(array $answers, array $psychAnswers): array {
         $baseEval = parent::evaluate($answers);
         $psych = [];
+
         foreach($this->psychQuestions as $i => $pq){
             $trait = $pq['trait'];
             $psych[$trait] = isset($psychAnswers[$i]) ? intval($psychAnswers[$i]) : 0;
         }
-        return array_merge($baseEval, ['psych'=>$psych]);
+
+        return array_merge($baseEval, ['psych' => $psych]);
     }
 
-    /**
-     * Recommend based on evaluation result (encapsulated here)
-     */
     public function recommend(array $eval): array {
+
+        // --- BASE SCORE ---
         $raw = $eval['track_scores'];
         $counts = $eval['track_counts'];
-        $avg = [];
-        foreach($raw as $k=>$v){
-            $avg[$k] = isset($counts[$k]) && $counts[$k] ? ($v / ($counts[$k]*5) * 100) : 0;
+        $finalScore = [];
+
+        foreach($raw as $track => $val){
+            $finalScore[$track] = ($val / ($counts[$track] * 5)) * 100;
         }
 
-        // psych adjustments
+        // --- PSYCHOLOGY BONUS ---
         $psych = $eval['psych'] ?? [];
-        if(isset($psych['creative']) && $psych['creative'] >= 4){
-            $avg['multimedia'] += 5;
-        }
-        if(isset($psych['detail']) && $psych['detail'] >= 4){
-            $avg['hardware'] += 3;
-            $avg['network'] += 2;
-        }
-        if(isset($psych['risk']) && $psych['risk'] <= 2){
-            $avg['network'] += 2;
-            $avg['hardware'] += 2;
+
+        foreach ($psych as $trait => $val) {
+
+             /** Penilaian psikolog test dari tidak setuju s.d sangat setuju
+             * 5 → +1
+             *4 → +0.5
+             *3 → 0
+             *2 → -0.5
+             *1 → -1
+             */
+            $norm = ($val - 3) / 2;
+
+            // Special case: risk (dibalik)
+            if ($trait === 'risk') {
+                $norm *= -1;
+            }
+
+            // Apply bonus 
+            if (isset($this->traitImpact[$trait])) {
+                foreach ($this->traitImpact[$trait] as $track => $impactWeight) {
+
+                    $bonus = $norm * $impactWeight * 5;
+                    $finalScore[$track] += $bonus;
+                }
+            }
         }
 
-        arsort($avg);
-        $primary = key($avg);
-        $primary_score = round(current($avg), 2);
-
-        // find secondary
-        $secondary = null; $secondary_score = 0; $i = 0;
-        foreach($avg as $k=>$v){
-            if($i === 0) { $i++; continue; }
-            $secondary = $k; $secondary_score = round($v, 2); break;
+        // --- Membatasi skor 100% ---
+        foreach ($finalScore as $track => $val) {
+            $finalScore[$track] = max(0, min(100, $val));
         }
 
-        $reason = $this->buildReason($primary, $primary_score, $eval);
+        // Urutkan hasil dari yang skornya terbessar ke terendah
+        arsort($finalScore);
+
+        // Primary
+        $primary = key($finalScore);
+        $primaryScore = round($finalScore[$primary], 2);
+
+        // Secondary
+        $scores = array_values($finalScore);
+        $keys = array_keys($finalScore);
+
+        $secondary = $keys[1] ?? null;
+        $secScore = isset($scores[1]) ? round($scores[1], 2) : 0;
 
         return [
             'primary' => $primary,
-            'score' => $primary_score,
+            'score' => $primaryScore,
             'secondary' => $secondary,
-            'secondary_score' => $secondary_score,
-            'reason' => $reason,
-            'raw_scores' => $avg
+            'secondary_score' => $secScore,
+            'raw_scores' => $finalScore,
+            'reason' => $this->buildReason($primary, $primaryScore, $eval)
         ];
     }
 
     private function buildReason(string $track, float $score, array $eval): string {
         $base = "Berdasarkan jawaban Anda, skor tertinggi berada pada \"$track\" dengan persentase $score%. ";
-        $explain = "Ini menunjukkan kecenderungan minat dan kemampuan di area tersebut. ";
-        if($track === 'software') $explain .= "Anda menyukai pemecahan masalah, logika, dan pengembangan aplikasi. ";
-        if($track === 'hardware') $explain .= "Anda menyukai eksperimen fisik, perancangan rangkaian, dan implementasi embedded. ";
-        if($track === 'network') $explain .= "Anda tertarik pada infrastruktur, konektivitas, dan aspek keamanan/ops jaringan. ";
-        if($track === 'multimedia') $explain .= "Anda memiliki rasa estetika, kreativitas, dan ketertarikan pada konten visual & audio. ";
+        $explain = "Ini mencerminkan kecenderungan minat dan gaya kerja Anda. ";
+
+        if($track === 'software') $explain .= "Anda menunjukkan ketertarikan pada problem-solving dan logika pemrograman. ";
+        if($track === 'hardware') $explain .= "Anda memiliki minat pada rangkaian, perangkat fisik, dan eksperimen. ";
+        if($track === 'network') $explain .= "Anda memiliki ketertarikan pada infrastruktur jaringan dan konfigurasi sistem. ";
+        if($track === 'multimedia') $explain .= "Anda menunjukkan preferensi pada kreativitas, estetika, dan konten visual/audio. ";
 
         $p = $eval['psych'] ?? [];
-        $explain .= "Selain itu, hasil psikologi menunjukkan: ";
         $parts = [];
         foreach($p as $trait=>$val){
             $parts[] = "$trait=$val";
         }
-        $explain .= implode(', ', $parts) . ". ";
-        $explain .= "Saran: pertimbangkan mencoba mata kuliah dan materi yang direkomendasikan untuk memastikan kecocokan.";
+
+        $explain .= "Hasil psikologi: " . implode(', ', $parts) . ". ";
+
         return $base . $explain;
     }
 }

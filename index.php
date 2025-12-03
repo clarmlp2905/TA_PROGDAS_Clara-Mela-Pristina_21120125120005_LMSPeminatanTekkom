@@ -82,7 +82,7 @@ if ($page === 'login') {
 ?>
   <div class="card">
     <h2>Buat akun baru</h2>
-    <p class="small">Daftar cepat menggunakan email pribadi atau SSO kampus (simulasi).</p>
+    <p class="small">Daftar cepat menggunakan email pribadi atau SSO kampus.</p>
     <form method="post">
       <div class="form-row">
         <input name="name" placeholder="Nama lengkap" class="input" required />
@@ -92,7 +92,7 @@ if ($page === 'login') {
         <input name="email" placeholder="Email (jika email)" class="input" />
         <select name="auth_method" class="input">
           <option value="email">Daftar via Email</option>
-          <option value="sso">SSO Kampus (simulasi)</option>
+          <option value="sso">SSO Kampus</option>
         </select>
       </div>
       <div style="display:flex;gap:8px;">
@@ -334,9 +334,6 @@ if ($page === 'result') {
     exit;
   }
   $rec = $last['rec'];
-//   echo "<pre>LAST DATA: ";
-// var_dump($last);
-// echo "</pre>";
 ?>
   <div class="card">
     <h2>Hasil Assessment</h2>
@@ -1140,7 +1137,6 @@ render_header();
   <p class="small">Aplikasi Learning Management System (LMS) untuk Pendataan, Pengelolaan, dan Pembelajaran Peminatan Mahasiswa pada Program Studi Teknik Komputer sebagai Sarana Digital dalam Mendukung Proses Akademik dan Pemilihan Konsentrasi Peminatan</p>
   <div style="display:flex;gap:10px;margin-top:10px;">
     <a class="btn btn-primary" href="?page=login">Daftar / Masuk</a>
-    <!-- <a class="btn" href="?page=assessment">Coba Assessment Demo</a> -->
   </div>
 </div>
 
