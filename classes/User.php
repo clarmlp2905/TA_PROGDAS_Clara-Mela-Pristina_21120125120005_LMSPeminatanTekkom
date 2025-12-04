@@ -1,9 +1,9 @@
 <?php
 class User extends BaseModel {
-    private string $id;
+    private string $id; // contoh variabel & tipe data(string)
     private string $name;
     private string $phone;
-    private string $email;
+    private string $email; // contoh Encapsulation = property private/protected + setter/getter
     private string $authType; // 'email'|'sso'
     private ?string $selectedTrack = null;
     private array $assessmentResults = [];
@@ -27,7 +27,7 @@ class User extends BaseModel {
     public function getAssessmentResults(): array { return $this->assessmentResults; }
     public function getHistory(): array { return $this->history; }
 
-    // Setters (with light sanitization)
+    // Setters 
     public function setName(string $v): void { $this->name = htmlspecialchars(trim($v)); }
     public function setPhone(string $v): void { $this->phone = htmlspecialchars(trim($v)); }
     public function setEmail(string $v): void { $this->email = htmlspecialchars(trim($v)); }

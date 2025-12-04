@@ -1,5 +1,6 @@
 <?php
-class Assessment extends BaseModel {
+class Assessment extends BaseModel // Inheritance
+ {
     protected array $questions = [];
 
     public function __construct() {
@@ -7,10 +8,6 @@ class Assessment extends BaseModel {
 
     public function getQuestions(): array { return $this->questions; }
 
-    /**
-     * Evaluate answers (array index => 1..5)
-     * Returns array with track_scores and track_counts
-     */
     public function evaluate(array $answers): array {
         $scores = [];
         $counts = [];

@@ -1,5 +1,6 @@
 <?php
-class PsychAssessment extends Assessment {
+class PsychAssessment extends Assessment // Inheritance
+{
     protected array $psychQuestions = [];
 
     // Mapping final: trait -> track -> impact weight
@@ -100,10 +101,10 @@ class PsychAssessment extends Assessment {
         foreach ($finalScore as $track => $val) {
             $finalScore[$track] = max(0, min(100, $val));
         }
-
-        // Urutkan hasil dari yang skornya terbessar ke terendah
+        
+        // Urutkan hasil dari yang skornya terbesar ke terendah
         arsort($finalScore);
-
+        
         // Primary
         $primary = key($finalScore);
         $primaryScore = round($finalScore[$primary], 2);

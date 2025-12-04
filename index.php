@@ -487,7 +487,6 @@ if ($page === 'result') {
         <?php $i++; } ?>
     </div>
   </div>
-
 <!-- ============================= -->
 <!--        SECTION CHALLENGE      -->
 <!-- ============================= -->
@@ -509,26 +508,25 @@ if (!empty($lockedChallengeTrack) && $lockedChallengeTrack !== $track) {
 }
 
 // -------------------------------
-// 2. CEK: Sudah mengerjakan challenge track ini?
-// Data disimpan di $_SESSION['progress']['materials']
+// 2. CEK DATA CHALLENGE SEBELUMNYA
+// Menampilkan skor terbaru & skor tertinggi
 // -------------------------------
 $materials = $_SESSION['progress']['materials'] ?? [];
-$alreadyDone = false;
-$doneScore = null;
+
+$latestScore = null;
+$bestScore = 0;
 
 foreach ($materials as $m) {
-    // cek berdasarkan track & memastikan ada skor
     if ($m['track'] === $track && isset($m['score'])) {
-        $alreadyDone = true;
-        $doneScore = $m['score'];
-        break;
-    }
-}
 
-// Jika sudah mengerjakan → disable
-if ($alreadyDone) {
-    $disable = true;
-    $note = "Challenge sudah dikerjakan (skor: $doneScore)";
+        // Simpan skor tertinggi
+        if ($m['score'] > $bestScore) {
+            $bestScore = $m['score'];
+        }
+
+        // Simpan skor terbaru (yang paling akhir ditemukan)
+        $latestScore = $m['score'];
+    }
 }
 ?>
 
@@ -541,7 +539,7 @@ if ($alreadyDone) {
 
         <?php if ($disable) { ?>
 
-            <!-- TOMBOL LOCKED -->
+            <!-- TOMBOL LOCKED KARENA TRACK LAIN -->
             <a class="btn btn-modern full locked" href="javascript:;">
                 <?= htmlspecialchars($note); ?>
             </a>
@@ -549,11 +547,20 @@ if ($alreadyDone) {
 
         <?php } else { ?>
 
+            <!-- TAMPILKAN SKOR TERBARU & TERTINGGI -->
+            <?php if ($latestScore !== null) { ?>
+                <p style="margin-bottom:10px; color:#444; line-height:1.5;">
+                    Skor terbaru: <strong><?= $latestScore; ?></strong><br>
+                    Skor tertinggi: <strong><?= $bestScore; ?></strong>
+                </p>
+            <?php } ?>
+
             <!-- TOMBOL BUKA CHALLENGE -->
             <a class="btn btn-modern full"
                href="?page=challenge&track=<?= urlencode($track); ?>">
                Kerjakan Challenge
             </a>
+
             <a class="btn btn-ghost" href="?page=dashboard">Kembali</a>
 
         <?php } ?>
@@ -561,11 +568,12 @@ if ($alreadyDone) {
     </div>
 </div>
 
-
 <?php
   render_footer();
   exit;
 }
+
+
 
 // Challenge page
   $challengeQuestions = [
@@ -853,34 +861,54 @@ if ($page === 'history') {
   </div>
 
 <div class="card">
-    <h2>Riwayat Challenge & Materi</h2>
+      <h2>Riwayat Challenge & Materi</h2>
     <?php 
     if (empty($mat)) {
         echo "<div class='small'>Belum mengerjakan challenge.</div>";
-    } else { ?>
-      <table class="pastel-table">
-        <thead>
-          <tr>
-            <th>Waktu</th>
-            <th>Track</th>
-            <th>Task</th>
-            <th>Skor</th>
-          </tr>
-        </thead>
-        <tbody>
-          <?php foreach ($mat as $m) {
-            $t = date('d M Y', $m['time']);
-            $score = $m['score'] ?? 0;
-            echo "<tr>
-                    <td>$t</td>
-                    <td>" . htmlspecialchars($m['track']) . "</td>
-                    <td>" . htmlspecialchars($m['task']) . "</td>
-                    <td>$score</td>
-                 </tr>";
-          } ?>
-        </tbody>
-      </table>
-    <?php } ?>
+    } else { 
+        
+        // FILTER: hanya ambil skor tertinggi
+        $best = null;
+        $bestScore = -1;
+
+        foreach ($mat as $m) {
+            if (isset($m['score']) && $m['score'] > $bestScore) {
+                $bestScore = $m['score'];
+                $best = $m; // simpan data lengkap percobaan
+            }
+        }
+
+        if (!$best) {
+            echo "<div class='small'>Belum ada skor.</div>";
+        } else {
+            ?>
+
+            <table class="pastel-table">
+                <thead>
+                    <tr>
+                        <th>Waktu</th>
+                        <th>Track</th>
+                        <th>Task</th>
+                        <th>Skor</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php
+                        $t = date('d M Y', $best['time']);
+                        echo "<tr>
+                                <td>$t</td>
+                                <td>" . htmlspecialchars($best['track']) . "</td>
+                                <td>" . htmlspecialchars($best['task']) . "</td>
+                                <td>$bestScore</td>
+                             </tr>";
+                    ?>
+                </tbody>
+            </table>
+
+            <?php 
+        }
+    } 
+    ?>
 
     <div style="margin-top:8px;">
       <a class="btn btn-modern full" href="?page=export&type=pdf&what=challenge" target="_blank">

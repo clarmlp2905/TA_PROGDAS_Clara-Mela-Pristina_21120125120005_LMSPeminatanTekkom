@@ -10,7 +10,7 @@ class ProgressManager {
 
     /**
      * Compute pass report per track, using latest assessment and materials progress.
-     * Pass defined as combined% >= 80
+     * Pass defined as combined% >= 70
      */
     public static function computePassReport(): array {
         $tracks = ['software','hardware','network','multimedia'];
